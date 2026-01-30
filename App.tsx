@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Bookmark, CategoryCount } from './types';
-import { getBookmarks, searchBookmarks, isChromeExtension } from './services/bookmarkService';
+import { Bookmark, CategoryCount, Folder } from './types';
+import { getBookmarksData, searchBookmarks, isChromeExtension, deleteBookmark, moveBookmark, createFolder } from './services/bookmarkService';
 import { categorizeBookmarksWithGemini } from './services/geminiService';
 import SearchBar from './components/SearchBar';
 import CategoryPills from './components/CategoryPills';
@@ -8,23 +8,44 @@ import BookmarkCard from './components/BookmarkCard';
 
 const App: React.FC = () => {
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
+  const [folders, setFolders] = useState<Folder[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [loading, setLoading] = useState(true);
   const [organizing, setOrganizing] = useState(false);
   const [isExtensionMode, setIsExtensionMode] = useState(false);
 
-  // Load bookmarks on mount
+  // Fetch data
+  const loadData = async () => {
+    setLoading(true);
+    const data = await getBookmarksData();
+    setBookmarks(data.bookmarks);
+    setFolders(data.folders);
+    setLoading(false);
+  };
+
   useEffect(() => {
     setIsExtensionMode(isChromeExtension());
-    const fetchBookmarks = async () => {
-      setLoading(true);
-      const data = await getBookmarks();
-      setBookmarks(data);
-      setLoading(false);
-    };
-    fetchBookmarks();
+    loadData();
   }, []);
+
+  // Actions
+  const handleDelete = async (id: string) => {
+    await deleteBookmark(id);
+    // Optimistic update or reload
+    setBookmarks(prev => prev.filter(b => b.id !== id));
+  };
+
+  const handleMove = async (bookmarkId: string, folderId: string) => {
+    await moveBookmark(bookmarkId, folderId);
+    // Reload to get updated categories/folders from Chrome
+    loadData();
+  };
+
+  const handleCreateFolder = async (name: string) => {
+    await createFolder(name);
+    loadData();
+  };
 
   // Filter logic
   const filteredBookmarks = useMemo(() => {
@@ -63,7 +84,9 @@ const App: React.FC = () => {
     setOrganizing(true);
     const newCategoriesMap = await categorizeBookmarksWithGemini(bookmarks);
     
-    // Update local state with new categories
+    // Update local state with new categories for display (Note: This doesn't move them in Chrome yet)
+    // To actually move them in Chrome, we would need to create folders matching the AI categories and move items.
+    // For now, we update the UI state.
     const updatedBookmarks = bookmarks.map(b => ({
       ...b,
       category: newCategoriesMap[b.id] || b.category
@@ -124,7 +147,8 @@ const App: React.FC = () => {
         <CategoryPills 
           categories={categories} 
           selectedCategory={selectedCategory} 
-          onSelectCategory={setSelectedCategory} 
+          onSelectCategory={setSelectedCategory}
+          onCreateFolder={handleCreateFolder}
         />
 
         {/* Grid Content */}
@@ -145,7 +169,13 @@ const App: React.FC = () => {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-20">
                 {filteredBookmarks.map((bm) => (
-                  <BookmarkCard key={bm.id} bookmark={bm} />
+                  <BookmarkCard 
+                    key={bm.id} 
+                    bookmark={bm} 
+                    folders={folders}
+                    onDelete={handleDelete}
+                    onMove={handleMove}
+                  />
                 ))}
               </div>
             )}

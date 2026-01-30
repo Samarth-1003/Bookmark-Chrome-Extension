@@ -7,9 +7,15 @@ export interface Bookmark {
   parentId?: string;
 }
 
+export interface Folder {
+  id: string;
+  title: string;
+}
+
 export interface CategoryCount {
   name: string;
   count: number;
+  id?: string; // Add ID so we can target folders
 }
 
 export enum ViewMode {
