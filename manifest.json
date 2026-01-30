@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "Vibrant Bookmark Organizer",
+  "version": "1.0.0",
+  "description": "Organize your bookmarks with style and AI.",
+  "permissions": [
+    "bookmarks",
+    "favicon"
+  ],
+  "action": {
+    "default_popup": "index.html"
+  },
+  "chrome_url_overrides": {
+    "newtab": "index.html"
+  },
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
+}
